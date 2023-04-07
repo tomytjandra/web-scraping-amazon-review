@@ -1,0 +1,13 @@
+name: scrape-amazon
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - pip=23.0.1=py39haa95532_0
+  - python=3.9.16=h6244533_2
+  - pip:
+    - arsenic==21.8
+    - asyncio==3.4.3
+    - pandas==2.0.0
+    - structlog==20.2.0
+    - tqdm==4.64.1
