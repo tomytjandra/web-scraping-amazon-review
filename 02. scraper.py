@@ -41,13 +41,23 @@ user_agent_list = [
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15'
 ]
 
+# from chatGPT
+def get_user_agent():
+    chrome_version = random.randint(100, 109)
+    mac_version = f"Macintosh; Intel Mac OS X 10_{random.randint(9, 15)}_{random.randint(1, 9)}"
+    win_version = f"Windows NT {random.choice(['6.1', '10.0'])}; Win64; x64"
+    linux_version = "X11; Linux x86_64"
+    
+    user_agent = f"Mozilla/5.0 ({random.choice([mac_version, win_version, linux_version])}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome_version}.0.0.0 Safari/537.36"
+    return user_agent
 
 async def extract_details(urls, headless):
     # iterate through multiple pages
     results = []
     for url in tqdm(urls):
         # random user_agent to avoid captcha
-        user_agent = random.choice(user_agent_list)
+        # user_agent = random.choice(user_agent_list)
+        user_agent = get_user_agent()
 
         # configure the web driver
         service = services.Chromedriver()
@@ -74,12 +84,12 @@ async def extract_details(urls, headless):
 
         async with get_session(service, browser) as session:
             # random delay to avoid captcha
-            delay = random.randint(0, 3)
-            asyncio.sleep(delay)
+            # delay = random.randint(0, 3)
+            # await asyncio.sleep(delay)
 
             # navigate to the web page
             await session.get(url)
-            print(url)
+            # print(url)
 
             # get the title of the current page
             document_title = await session.execute_script("return document.title;")
@@ -167,7 +177,8 @@ def main(idx_range, headless, filename):
 
     # list of pages to be scraped
     pages = pd.read_csv(filename)["ProductURL"].to_list()
-    pages = pages[idx_range[0] : idx_range[1]]
+    if "missing" not in filename:
+        pages = pages[idx_range[0] : idx_range[1]]
 
     results = asyncio.run(extract_details(pages, headless))
 
@@ -187,4 +198,4 @@ def main(idx_range, headless, filename):
 
 if __name__ == "__main__":
     # please specify the index range here
-    main(idx_range=(0, 1000), headless=False, filename="ProductURL.csv")
+    main(idx_range=(5000, 10000), headless=True, filename="ProductURL.csv")

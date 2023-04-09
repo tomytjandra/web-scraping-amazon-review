@@ -1,10 +1,11 @@
 import pandas as pd
+from glob import glob
 
 # this will be the left df
-full_data_path = "results/20230407_183209_from_0_to_1000_scrap_results.csv"
+full_data_path = "results/20230407_183209_from_0_to_5000_scrap_results.csv"
 
 # this will be the right df
-missing_data_path = "results/20230407_200531_from_0_to_1000_scrap_results.csv"
+missing_data_path = glob('results/*' + '_'.join(full_data_path.split('_')[2:]))[-1]
 
 # read both dataframe
 full_df = pd.read_csv(full_data_path).set_index("ProductURL")
@@ -25,3 +26,4 @@ merged_df = merged_df.reset_index()
 
 # save csv, replace with the left df
 merged_df.to_csv(full_data_path, index=False)
+print(f"REMAINING MISSING VALUES: {merged_df[merged_df['ProductTitle'].isna()].shape[0]}")
