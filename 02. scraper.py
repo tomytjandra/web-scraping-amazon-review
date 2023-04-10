@@ -198,4 +198,4 @@ def main(idx_range, headless, filename):
 
 if __name__ == "__main__":
     # please specify the index range here
-    main(idx_range=(5000, 10000), headless=True, filename="ProductURL.csv")
+    main(idx_range=(0, 10), headless=False, filename="ProductURL.csv")

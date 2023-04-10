@@ -7,7 +7,7 @@ pages = pd.Series(pages, name="ProductURL")
 # pages.to_csv("ProductURL.csv", index=False)
 
 # GENERATE ONLY URL WITH MISSING VALUES (MAYBE SKIPPED DUE TO CAPTCHA)
-full_data_path = "results/20230407_183209_from_0_to_5000_scrap_results.csv"
+full_data_path = "results/20230410_051836_from_5000_to_10000_scrap_results.csv"
 
 scrap_results = pd.read_csv(full_data_path)
 pages_missing = scrap_results[scrap_results["ProductTitle"].isna()]["ProductURL"]
