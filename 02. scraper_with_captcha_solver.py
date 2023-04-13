@@ -1,7 +1,7 @@
 # references
 # https://medium.com/analytics-vidhya/asynchronous-web-scraping-101-fetching-multiple-urls-using-arsenic-ec2c2404ecb4
 # https://www.zenrows.com/blog/user-agent-web-scraping#what-are-the-best-user-agents-for-scraping
-
+# https://github.com/a-maliarov/amazoncaptcha
 
 # data wrangling
 import pandas as pd
@@ -20,6 +20,8 @@ import structlog
 # measure computation time
 from tqdm import tqdm
 
+# captcha solver
+from amazoncaptcha import AmazonCaptcha
 
 def set_arsenic_log_level(level=logging.WARNING):
     logger = logging.getLogger("arsenic")
@@ -51,7 +53,38 @@ def get_user_agent():
     user_agent = f"Mozilla/5.0 ({random.choice([mac_version, win_version, linux_version])}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome_version}.0.0.0 Safari/537.36"
     return user_agent
 
-async def extract_details(urls, headless, user_agent=False):
+async def captcha_solver(session):
+    is_captcha_page = True
+
+    # solve the captcha until correct
+    while is_captcha_page:
+        try:
+            h4_el = await session.get_element("h4")
+            h4_text = await h4_el.get_text()
+            is_captcha_page = (h4_text == 'Enter the characters you see below')
+        except:
+            is_captcha_page = False
+            break
+
+        # get captcha link
+        img_el = await session.get_element("img")
+        img_src = await img_el.get_attribute("src")
+        
+        # solve the captcha
+        captcha = AmazonCaptcha.fromlink(img_src)
+        solution = captcha.solve()
+        
+        # input solution to textbox
+        textbox_el = await session.get_element("#captchacharacters")
+        textbox_el.clear()
+        textbox_el.send_keys(solution)
+        
+        # click submit button
+        button_el = await session.get_element("button")
+        button_el.click()
+
+
+async def extract_details(urls, headless, random_user_agent):
     # iterate through multiple pages
     results = []
     for url in tqdm(urls):
@@ -78,19 +111,14 @@ async def extract_details(urls, headless, user_agent=False):
             browser.capabilities['goog:chromeOptions']['args'].append("--headless")
 
         # random user_agent to avoid captcha
-        if user_agent:
+        if random_user_agent:
             user_agent_string = random.choice(user_agent_list)
             # user_agent_string = get_user_agent()
             browser.capabilities['goog:chromeOptions']['args'].append(f"user-agent={user_agent_string}")
 
         async with get_session(service, browser) as session:
-            # random delay to avoid captcha
-            # delay = random.randint(0, 3)
-            # await asyncio.sleep(delay)
-
             # navigate to the web page
             await session.get(url)
-            # print(url)
 
             # get the title of the current page
             document_title = await session.execute_script("return document.title;")
@@ -104,6 +132,9 @@ async def extract_details(urls, headless, user_agent=False):
                     }
                 )
                 continue
+
+            # SOLVING CAPTCHA
+            captcha_solver(session)
 
             # extract the text content of the page
             ## TITLE
@@ -172,16 +203,15 @@ async def extract_details(urls, headless, user_agent=False):
     return results
 
 
-def main(idx_range, headless, user_agent, filename):
+def main(filename, idx_range, headless, random_user_agent):
     # suppress log from arsenic
     set_arsenic_log_level()
 
     # list of pages to be scraped
     pages = pd.read_csv(filename)["ProductURL"].to_list()
-    if "missing" not in filename:
-        pages = pages[idx_range[0] : idx_range[1]]
+    pages = pages[idx_range[0] : idx_range[1]]
 
-    results = asyncio.run(extract_details(pages, headless, user_agent))
+    results = asyncio.run(extract_details(pages, headless, random_user_agent))
 
     # convert result list to dataframe
     df = pd.DataFrame(results)
@@ -191,12 +221,20 @@ def main(idx_range, headless, user_agent, filename):
     if not os.path.exists(FOLDER_NAME):                                                                                                                                                          
         os.makedirs(FOLDER_NAME)
 
-    now = datetime.now()                                                                                                                                             
+    now = datetime.now()
     datetime_string = now.strftime("%Y%m%d_%H%M%S")
-    filename = f"{datetime_string}_from_{idx_range[0]}_to_{idx_range[1]}_scrap_results.csv"
+    if 'missing' in filename:
+        filename = f"{datetime_string}_missing_from_{idx_range[0]}_to_{idx_range[1]}_scrap_results.csv"
+    else:
+        filename = f"{datetime_string}_from_{idx_range[0]}_to_{idx_range[1]}_scrap_results.csv"
     df.to_csv(os.path.join(FOLDER_NAME, filename), index=False)
 
 
 if __name__ == "__main__":
-    # please specify the index range here
-    main(idx_range=(0, 10000), headless=True, user_agent=False, filename="ProductURL_missing.csv")
+    # please specify the parameters here
+    main(
+        filename="ProductURL_missing.csv",
+        idx_range=(0, 1000),
+        headless=True,
+        random_user_agent=False,
+    )

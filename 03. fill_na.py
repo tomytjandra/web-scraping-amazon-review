@@ -1,29 +1,34 @@
 import pandas as pd
 from glob import glob
 
-# this will be the left df
-full_data_path = "results/20230407_183209_from_0_to_5000_scrap_results.csv"
 
-# this will be the right df
-missing_data_path = glob('results/*' + '_'.join(full_data_path.split('_')[2:]))[-1]
+def fill_missing_urls(full_data_path, missing_data_path):
+    # read both dataframe
+    full_df = pd.read_csv(full_data_path).set_index("ProductURL")
+    missing_df = pd.read_csv(missing_data_path).set_index("ProductURL")
 
-# read both dataframe
-full_df = pd.read_csv(full_data_path).set_index("ProductURL")
-missing_df = pd.read_csv(missing_data_path).set_index("ProductURL")
+    # perform a left join
+    merged_df = pd.merge(full_df, missing_df, how='left', left_index=True, right_index=True, suffixes=('', '_temp'))
 
-# perform a left join
-merged_df = pd.merge(full_df, missing_df, how='left', left_index=True, right_index=True, suffixes=('', '_temp'))
+    # fill in missing values of left df with right df
+    for col in full_df.columns:
+        merged_df[col].fillna(merged_df[f"{col}_temp"], inplace=True)
 
-# fill in missing values of left df with right df
-for col in full_df.columns:
-    merged_df[col].fillna(merged_df[f"{col}_temp"], inplace=True)
+    # delete temporary columns
+    merged_df = merged_df.drop(columns=merged_df.filter(regex='_temp').columns)
 
-# delete temporary columns
-merged_df = merged_df.drop(columns=merged_df.filter(regex='_temp').columns)
+    # reset index
+    merged_df = merged_df.reset_index()
 
-# reset index
-merged_df = merged_df.reset_index()
+    # save csv, replace with the left df
+    merged_df.to_csv(full_data_path, index=False)
+    print(f"REMAINING MISSING VALUES: {merged_df[merged_df['ProductTitle'].isna()].shape[0]}")
 
-# save csv, replace with the left df
-merged_df.to_csv(full_data_path, index=False)
-print(f"REMAINING MISSING VALUES: {merged_df[merged_df['ProductTitle'].isna()].shape[0]}")
+if __name__ == "__main__":
+    # this will be the left df
+    full_data_path = "results/from_0_to_10000_scrap_results_Tomy.csv"
+
+    # this will be the right df
+    missing_data_path = "results/20230413_105520_missing_from_0_to_100_scrap_results.csv"
+
+    fill_missing_urls(full_data_path, missing_data_path)
