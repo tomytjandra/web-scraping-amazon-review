@@ -23,6 +23,11 @@ from tqdm import tqdm
 # captcha solver
 from amazoncaptcha import AmazonCaptcha
 
+# delete temp files
+import glob
+import shutil
+
+
 def set_arsenic_log_level(level=logging.WARNING):
     logger = logging.getLogger("arsenic")
 
@@ -54,10 +59,18 @@ def get_user_agent():
     return user_agent
 
 async def captcha_solver(session):
-    is_captcha_page = True
-
     # solve the captcha until correct
-    while is_captcha_page:
+    while True:
+        try:
+            h4_el = await session.get_element("h4")
+            h4_text = await h4_el.get_text()
+            is_captcha_page = (h4_text == 'Enter the characters you see below')
+        except:
+            is_captcha_page = False
+
+        if not is_captcha_page:
+            return
+    
         # get captcha link
         img_el = await session.get_element("img")
         img_src = await img_el.get_attribute("src")
@@ -65,18 +78,22 @@ async def captcha_solver(session):
         # solve the captcha
         captcha = AmazonCaptcha.fromlink(img_src)
         solution = captcha.solve()
-        
+            
         # input solution to textbox
         textbox_el = await session.get_element("#captchacharacters")
-        textbox_el.clear()
-        textbox_el.send_keys(solution)
-        
+        await textbox_el.clear()
+        await textbox_el.send_keys(solution)
+            
         # click submit button
         button_el = await session.get_element("button")
-        button_el.click()
+        await button_el.click()
 
 
-async def extract_details(urls, headless, random_user_agent):
+async def extract_details(urls, headless, random_user_agent, temp_file_path):
+    # for delete temporary files
+    delete_temp_every = 50
+    url_counter = 0
+
     # iterate through multiple pages
     results = []
     for url in tqdm(urls):
@@ -112,6 +129,9 @@ async def extract_details(urls, headless, random_user_agent):
             # navigate to the web page
             await session.get(url)
 
+            # SOLVING CAPTCHA
+            await captcha_solver(session)
+
             # get the title of the current page
             document_title = await session.execute_script("return document.title;")
 
@@ -125,16 +145,6 @@ async def extract_details(urls, headless, random_user_agent):
                 )
                 continue
 
-            # SOLVING CAPTCHA
-            try:
-                h4_el = await session.get_element("h4")
-                h4_text = await h4_el.get_text()
-                is_captcha_page = (h4_text == 'Enter the characters you see below')
-            except:
-                is_captcha_page = False
-
-            if is_captcha_page:
-                await captcha_solver(session)
 
             # extract the text content of the page
             ## TITLE
@@ -200,10 +210,30 @@ async def extract_details(urls, headless, random_user_agent):
                 }
             )
 
+        # delete temp files
+        url_counter += 1
+        if url_counter % delete_temp_every == 0:
+            try:
+                for f in glob.glob(f"{temp_file_path}/scoped_dir*"):
+                    shutil.rmtree(f)
+            except Exception as e:
+                    print(e)
+
     return results
 
 
-def main(filename, idx_range, headless, random_user_agent):
+def main(filename, idx_range, headless, random_user_agent, temp_file_path):
+    """
+    Scrape product details from Amazon using Arsenic.
+
+    Parameters:
+        filename (str): Name of the CSV file containing the "ProductURL" column to be scraped.
+        idx_range (tuple): Start and end index (end index not included) of the rows to be scraped from the CSV file.
+        headless (bool): If True, the browser UI won't pop up during the scraping process.
+        random_user_agent (bool): If True, a random user agent will be used for each page.
+        temp_file_path (str): Path to the directory where the temporary files will be stored during the scraping process.
+    """
+
     # suppress log from arsenic
     set_arsenic_log_level()
 
@@ -211,7 +241,7 @@ def main(filename, idx_range, headless, random_user_agent):
     pages = pd.read_csv(filename)["ProductURL"].to_list()
     pages = pages[idx_range[0] : idx_range[1]]
 
-    results = asyncio.run(extract_details(pages, headless, random_user_agent))
+    results = asyncio.run(extract_details(pages, headless, random_user_agent, temp_file_path))
 
     # convert result list to dataframe
     df = pd.DataFrame(results)
@@ -234,7 +264,8 @@ if __name__ == "__main__":
     # please specify the parameters here
     main(
         filename="ProductURL_missing.csv",
-        idx_range=(0, 4000),
-        headless=False,
+        idx_range=(0, 1000),
+        headless=True,
         random_user_agent=False,
+        temp_file_path="C:/Users/tomyt/AppData/Local/Temp",
     )
