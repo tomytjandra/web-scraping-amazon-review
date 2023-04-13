@@ -58,18 +58,10 @@ async def captcha_solver(session):
 
     # solve the captcha until correct
     while is_captcha_page:
-        try:
-            h4_el = await session.get_element("h4")
-            h4_text = await h4_el.get_text()
-            is_captcha_page = (h4_text == 'Enter the characters you see below')
-        except:
-            is_captcha_page = False
-            break
-
         # get captcha link
         img_el = await session.get_element("img")
         img_src = await img_el.get_attribute("src")
-        
+
         # solve the captcha
         captcha = AmazonCaptcha.fromlink(img_src)
         solution = captcha.solve()
@@ -134,7 +126,15 @@ async def extract_details(urls, headless, random_user_agent):
                 continue
 
             # SOLVING CAPTCHA
-            captcha_solver(session)
+            try:
+                h4_el = await session.get_element("h4")
+                h4_text = await h4_el.get_text()
+                is_captcha_page = (h4_text == 'Enter the characters you see below')
+            except:
+                is_captcha_page = False
+
+            if is_captcha_page:
+                await captcha_solver(session)
 
             # extract the text content of the page
             ## TITLE
@@ -234,7 +234,7 @@ if __name__ == "__main__":
     # please specify the parameters here
     main(
         filename="ProductURL_missing.csv",
-        idx_range=(0, 1000),
-        headless=True,
+        idx_range=(0, 4000),
+        headless=False,
         random_user_agent=False,
     )

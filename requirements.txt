@@ -1,0 +1,6 @@
+amazoncaptcha==0.5.10
+arsenic==21.8
+asyncio==3.4.3
+pandas==2.0.0
+structlog==20.2.0
+tqdm==4.64.1
