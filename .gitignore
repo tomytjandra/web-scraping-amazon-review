@@ -1,10 +1,9 @@
-# big data
-Reviews_withURL.csv
-
 # personal code
 draft.ipynb
+viz.ipynb
 .ipynb_checkpoints
+.env
 
-# personal results
+# csv data
+data
 results
-ProductURL_missing.csv

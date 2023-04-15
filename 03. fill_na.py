@@ -26,9 +26,9 @@ def fill_missing_urls(full_data_path, missing_data_path):
 
 if __name__ == "__main__":
     # this will be the left df
-    full_data_path = "results/from_0_to_10000_scrap_results_Tomy.csv"
+    full_data_path = "results/from_50000_to_60000_scrap_results_Frances.csv"
 
     # this will be the right df
-    missing_data_path = "results/20230413_114556_missing_from_0_to_1000_scrap_results.csv"
+    missing_data_path = "results/20230415_061429_missing_from_0_to_2869_scrap_results.csv"
 
     fill_missing_urls(full_data_path, missing_data_path)

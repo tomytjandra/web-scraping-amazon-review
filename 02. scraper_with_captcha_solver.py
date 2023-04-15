@@ -263,8 +263,8 @@ def main(filename, idx_range, headless, random_user_agent, temp_file_path):
 if __name__ == "__main__":
     # please specify the parameters here
     main(
-        filename="ProductURL_missing.csv",
-        idx_range=(0, 1000),
+        filename="ProductURL.csv",
+        idx_range=(30000, 35000),
         headless=True,
         random_user_agent=False,
         temp_file_path="C:/Users/tomyt/AppData/Local/Temp",
